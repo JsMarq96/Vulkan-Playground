@@ -1,14 +1,16 @@
 #include "app.h"
+#include "GLFW/glfw3.h"
 #include <cstdint>
 #include <cstring>
 #include <cstdint>
 #include <optional>
 #include <stdint.h>
+#include <vulkan/vulkan_core.h>
 
 bool check_validation_layers(const char** required_val_layers, 
                              const uint32_t required_val_layer_count);
 
-bool is_device_suitable(const VkPhysicalDevice &device, sQueueFamilies* queues);
+bool is_device_suitable(const VkPhysicalDevice &device, const VkSurfaceKHR &surface, sQueueFamilies* queues);
 
 static VKAPI_ATTR VkBool32 
 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -110,6 +112,17 @@ void sApp::_init_vulkan() {
     }
 #endif
 
+    // ===================================
+    // WINDOW SURFACE CREATION ===========
+    // ===================================
+    {
+        VK_OK(glfwCreateWindowSurface(Vulkan.instance, 
+                                     window, 
+                                     NULL, 
+                                     &Vulkan.surface), 
+              "Failed to create surface");
+    }
+
 
     // ===================================
     // PICK PHYSICAL DEVICE ==============
@@ -130,6 +143,7 @@ void sApp::_init_vulkan() {
         // TODO: create a reting system for each GPU's capabilities
         for(uint32_t i = 0; i < device_count; i++) {
             if (is_device_suitable(device_list[i], 
+                                   Vulkan.surface,
                                    &Vulkan.queues)) {
                 Vulkan.physical_device = device_list[i];
                 break;
@@ -146,14 +160,23 @@ void sApp::_init_vulkan() {
     // CREATE LOGICAL DEVICE =============
     // ===================================
     {
-        // Set the queues for the device
+        // Create the queues for interacting with the device
         float queue_priority = 1.0f;
-        VkDeviceQueueCreateInfo queue_create_info = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .pNext = NULL,
-            .queueFamilyIndex = Vulkan.queues.graphics_family_id,
-            .queueCount = 1,
-            .pQueuePriorities = &queue_priority
+        VkDeviceQueueCreateInfo queues_creation_info[2] = {
+            { // GRAPHICS QUEUE
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .pNext = NULL,
+                .queueFamilyIndex = Vulkan.queues.graphics_family_id,
+                .queueCount = 1,
+                .pQueuePriorities = &queue_priority
+            },
+            { // PRESENT QUEUE
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .pNext = NULL,
+                .queueFamilyIndex = Vulkan.queues.presenting_family_id,
+                .queueCount = 1,
+                .pQueuePriorities = &queue_priority
+            }
         };
 
         // Set the device features: no need for now (thingslike geometry shaders and stuff)
@@ -163,8 +186,8 @@ void sApp::_init_vulkan() {
         VkDeviceCreateInfo device_create_info = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .pNext = NULL,
-            .queueCreateInfoCount = 1,
-            .pQueueCreateInfos = &queue_create_info,
+            .queueCreateInfoCount = 2,
+            .pQueueCreateInfos = queues_creation_info,
             .enabledExtensionCount = 0,
             .pEnabledFeatures = &device_features,
         };
@@ -180,8 +203,21 @@ void sApp::_init_vulkan() {
                          Vulkan.queues.graphics_family_id, 
                          0, 
                          &Vulkan.graphics_queue);
+        vkGetDeviceQueue(Vulkan.device, 
+                         Vulkan.queues.presenting_family_id, 
+                         0, 
+                         &Vulkan.present_queue);
+    }
+
+    // ===================================
+    // SWAPCHAIN CREATION ================
+    // ===================================
+    {
+
     }
 }
+
+
 
 
 
@@ -218,7 +254,9 @@ bool check_validation_layers(const char** required_val_layers,
 }
 
 
-bool is_device_suitable(const VkPhysicalDevice &device, sQueueFamilies* queues) {
+bool is_device_suitable(const VkPhysicalDevice &device, 
+                        const VkSurfaceKHR &surface, 
+                        sQueueFamilies* queues) {
     // TODO: check for VkPhyscallDeviceFeatures, for things like texture compression, multiviewport etc
     VkPhysicalDeviceProperties device_properties = {};
     vkGetPhysicalDeviceProperties(device, 
@@ -237,15 +275,24 @@ bool is_device_suitable(const VkPhysicalDevice &device, sQueueFamilies* queues) 
     VkQueueFamilyProperties *queue_properties = (VkQueueFamilyProperties*) malloc(sizeof(VkQueueFamilyProperties) * queue_family_count); 
 
     for(uint32_t i = 0; i < queue_family_count; i++) {
+        // Check for support of a graphics capabale vulkan device
         if (queue_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             queues->graphics_family_id = i;
             queues->has_found_graphics_family = true;
+        }
+
+        // Check for support for being able to present to the current VkSurface type
+        VkBool32 surface_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &surface_support);
+        if (surface_support) {
+            queues->has_found_presenting_familiy = true;
+            queues->presenting_family_id = i;
         }
     }
 
     free(queue_properties);
 
-    return queues->has_found_graphics_family = true;
+    return queues->has_found_graphics_family && queues->has_found_presenting_familiy;
 }
 
 

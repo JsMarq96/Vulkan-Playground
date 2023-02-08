@@ -1,8 +1,17 @@
 #pragma once
 
 #include <stdint.h>
+#include <vulkan/vulkan_core.h>
+#ifdef _WIN32
+#define VK_USE_PLATFORM_WIN32_KHR
+#else
+#define VK_USE_PLATFORM_XLIB_KHR
+#endif
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
 
 #include <cassert>
 #include <iostream>
@@ -18,6 +27,8 @@
 struct sQueueFamilies {
     uint32_t graphics_family_id;
     bool has_found_graphics_family = false;
+    uint32_t presenting_family_id;
+    bool has_found_presenting_familiy = false;
 };
 
 // https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Window_surface
@@ -31,22 +42,29 @@ struct sApp {
         sQueueFamilies queues;
         VkDevice device; // logical device
         VkQueue  graphics_queue;
+        VkQueue  present_queue;
+        VkSurfaceKHR surface;
 
-#ifndef NDEBUG
         // Validation layers
         const char* required_validation_layers[2] = {
             "VK_LAYER_KHRONOS_validation",
         };
         uint32_t required_validation_layer_count = 1;
 
+        // Instance extentions
         const char* required_extensions[10] = {
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
-        uint32_t required_extension_count = 1;
+        uint32_t required_extension_count = 2;
+
+        // Device extensions
+        const char* required_device_extensions[10] = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+        uint32_t required_device_extension_count = 2;
 
         // Debug messaegs
         VkDebugUtilsMessengerEXT debug_messenger;
-#endif
     } Vulkan;
 
     void run() {
@@ -92,6 +110,7 @@ struct sApp {
 
     void _clean_up() {
         vkDestroyDevice(Vulkan.device, NULL);
+        vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);
         // TODO destroy the Utils messener: add it to the Vulkna struct
         vkDestroyInstance(Vulkan.instance, NULL);
         glfwDestroyWindow(window);
