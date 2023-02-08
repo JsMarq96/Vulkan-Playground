@@ -4,13 +4,15 @@
 #include <vulkan/vulkan_core.h>
 #ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR
+#define GLFW_EXPOSE_NATIVE_WIN32
 #else
 #define VK_USE_PLATFORM_XLIB_KHR
+#define GLFW_EXPOSE_NATIVE_X11
 #endif
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#define GLFW_EXPOSE_NATIVE_X11
+
 #include <GLFW/glfw3native.h>
 
 #include <cassert>
@@ -31,7 +33,20 @@ struct sQueueFamilies {
     bool has_found_presenting_familiy = false;
 };
 
-// https://vulkan-tutorial.com/en/Drawing_a_triangle/Presentation/Window_surface
+struct sSwapchainSupportInfo {
+    VkSurfaceCapabilitiesKHR capabilites;
+    VkSurfaceFormatKHR  *formats = NULL;
+    uint32_t format_count = 0;
+    VkPresentModeKHR  *present_modes = NULL;
+    uint32_t present_modes_count = 0;
+
+    void clean() {
+        free(formats);
+        free(present_modes);
+    }
+};
+
+// https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain All of the details are in the struct now, so let's extend isDeviceSuitable
 struct sApp {
     GLFWwindow *window = NULL;
 
@@ -44,6 +59,7 @@ struct sApp {
         VkQueue  graphics_queue;
         VkQueue  present_queue;
         VkSurfaceKHR surface;
+        sSwapchainSupportInfo swapchain_info;
 
         // Validation layers
         const char* required_validation_layers[2] = {
@@ -55,13 +71,13 @@ struct sApp {
         const char* required_extensions[10] = {
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         };
-        uint32_t required_extension_count = 2;
+        uint32_t required_extension_count = 1;
 
         // Device extensions
         const char* required_device_extensions[10] = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME
         };
-        uint32_t required_device_extension_count = 2;
+        uint32_t required_device_extension_count = 1;
 
         // Debug messaegs
         VkDebugUtilsMessengerEXT debug_messenger;
@@ -109,6 +125,7 @@ struct sApp {
     void _init_vulkan();
 
     void _clean_up() {
+        Vulkan.swapchain_info.clean();
         vkDestroyDevice(Vulkan.device, NULL);
         vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);
         // TODO destroy the Utils messener: add it to the Vulkna struct

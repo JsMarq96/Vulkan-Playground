@@ -5,12 +5,21 @@
 #include <cstdint>
 #include <optional>
 #include <stdint.h>
+#include <string.h>
 #include <vulkan/vulkan_core.h>
 
 bool check_validation_layers(const char** required_val_layers, 
                              const uint32_t required_val_layer_count);
 
-bool is_device_suitable(const VkPhysicalDevice &device, const VkSurfaceKHR &surface, sQueueFamilies* queues);
+bool is_device_suitable(const VkPhysicalDevice &device, 
+                        const VkSurfaceKHR &surface, 
+                        const char** required_extensions,
+                        const uint32_t required_extensions_count,
+                        sQueueFamilies* queues);
+
+void get_swapchain_info(const VkPhysicalDevice& device,
+                        const VkSurfaceKHR &surface,
+                        sSwapchainSupportInfo *swapchain_info);
 
 static VKAPI_ATTR VkBool32 
 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -123,6 +132,15 @@ void sApp::_init_vulkan() {
               "Failed to create surface");
     }
 
+    // ===================================
+    // LOAD SWAPCHAIN INFO ===============
+    // ===================================
+    {
+        get_swapchain_info(Vulkan.device, 
+                           Vulkan.surface, 
+                           &Vulkan.swapchain_info);
+    }
+
 
     // ===================================
     // PICK PHYSICAL DEVICE ==============
@@ -144,12 +162,13 @@ void sApp::_init_vulkan() {
         for(uint32_t i = 0; i < device_count; i++) {
             if (is_device_suitable(device_list[i], 
                                    Vulkan.surface,
+                                   Vulkan.required_device_extensions, 
+                                   Vulkan.required_device_extension_count,
                                    &Vulkan.queues)) {
                 Vulkan.physical_device = device_list[i];
                 break;
             }
         }
-
         assert_msg(Vulkan.physical_device != VK_NULL_HANDLE, "Could not find a suitable GPU");
 
         free(device_list);
@@ -188,7 +207,8 @@ void sApp::_init_vulkan() {
             .pNext = NULL,
             .queueCreateInfoCount = 2,
             .pQueueCreateInfos = queues_creation_info,
-            .enabledExtensionCount = 0,
+            .enabledExtensionCount = Vulkan.required_device_extension_count,
+            .ppEnabledExtensionNames = Vulkan.required_device_extensions,
             .pEnabledFeatures = &device_features,
         };
 
@@ -209,12 +229,7 @@ void sApp::_init_vulkan() {
                          &Vulkan.present_queue);
     }
 
-    // ===================================
-    // SWAPCHAIN CREATION ================
-    // ===================================
-    {
-
-    }
+    
 }
 
 
@@ -224,6 +239,9 @@ void sApp::_init_vulkan() {
 // ===================================
 // HELPER FUNCTIONS
 // ===================================
+
+// LAYERS FUNC =========================================
+
 bool check_validation_layers(const char** required_val_layers, 
                              const uint32_t required_val_layer_count) {
     // Get the layer count
@@ -253,9 +271,66 @@ bool check_validation_layers(const char** required_val_layers,
     return true;
 }
 
+// SWAPCHAIN FUNCS ========================================
+
+void get_swapchain_info(const VkPhysicalDevice& device,
+                        const VkSurfaceKHR &surface,
+                        sSwapchainSupportInfo *swapchain_info) {
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &swapchain_info->capabilites);
+
+    // Enumerate surface formats & store them
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &swapchain_info->format_count, NULL);
+
+    assert_msg(swapchain_info->format_count > 0, "Not found any surface formats of the device");
+
+    swapchain_info->formats = (VkSurfaceFormatKHR*) malloc(sizeof(VkSurfaceFormatKHR) * swapchain_info->format_count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &swapchain_info->format_count, swapchain_info->formats);
+
+    // Repeat for presentation modes
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &swapchain_info->present_modes_count, NULL);
+
+    assert_msg(swapchain_info->present_modes_count > 0, "Not found any presentation mode of the device");
+
+    swapchain_info->present_modes = (VkPresentModeKHR*) malloc(sizeof(VkPresentModeKHR) * swapchain_info->present_modes_count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &swapchain_info->present_modes_count, swapchain_info->present_modes);
+}
+
+
+// DEVICE FUNCS ============================================
+
+inline bool check_device_extension_support(const VkPhysicalDevice &device, 
+                                           const char** required_extensions,
+                                           const uint32_t required_extensions_count) {
+    // Get the device's extensions
+    uint32_t device_extension_count = 0;
+    vkEnumerateDeviceExtensionProperties(device, NULL, &device_extension_count, NULL);
+
+    VkExtensionProperties *device_extensions = (VkExtensionProperties*) malloc(sizeof(VkExtensionProperties) * device_extension_count);
+
+    vkEnumerateDeviceExtensionProperties(device, NULL, &device_extension_count, device_extensions);
+
+    // Check if all the required extensions are avaible via the count after the comparison
+    uint32_t extensions_available_count = 0;
+    for(uint32_t i = 0; i < required_extensions_count; i++) {
+        for(uint32_t j = 0; j < device_extension_count; j++) {
+            std::cout << device_extensions[j].extensionName  << "   " <<  required_extensions[i] << std::endl;
+            if (strcmp(device_extensions[j].extensionName, required_extensions[i]) == 0) {
+                device_extensions[j].extensionName[0] = '\0'; // Early skips for next iterations
+                extensions_available_count++;
+                break;
+            }
+        }       
+    }
+
+    free(device_extensions);
+
+    return extensions_available_count == required_extensions_count;
+}
 
 bool is_device_suitable(const VkPhysicalDevice &device, 
                         const VkSurfaceKHR &surface, 
+                        const char** required_extensions,
+                        const uint32_t required_extensions_count,
                         sQueueFamilies* queues) {
     // TODO: check for VkPhyscallDeviceFeatures, for things like texture compression, multiviewport etc
     VkPhysicalDeviceProperties device_properties = {};
@@ -263,9 +338,9 @@ bool is_device_suitable(const VkPhysicalDevice &device,
                                   &device_properties);
 
 
-    if (device_properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        return false;
-    }
+    //if (device_properties.deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    //    return false;
+    //}
 
     // Now check the the needed queue families
     uint32_t queue_family_count = 0;
@@ -273,6 +348,7 @@ bool is_device_suitable(const VkPhysicalDevice &device,
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, NULL);
 
     VkQueueFamilyProperties *queue_properties = (VkQueueFamilyProperties*) malloc(sizeof(VkQueueFamilyProperties) * queue_family_count); 
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_properties);
 
     for(uint32_t i = 0; i < queue_family_count; i++) {
         // Check for support of a graphics capabale vulkan device
@@ -282,9 +358,9 @@ bool is_device_suitable(const VkPhysicalDevice &device,
         }
 
         // Check for support for being able to present to the current VkSurface type
-        VkBool32 surface_support = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &surface_support);
-        if (surface_support) {
+        VkBool32 present_support = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+        if (present_support) {
             queues->has_found_presenting_familiy = true;
             queues->presenting_family_id = i;
         }
@@ -292,9 +368,11 @@ bool is_device_suitable(const VkPhysicalDevice &device,
 
     free(queue_properties);
 
-    return queues->has_found_graphics_family && queues->has_found_presenting_familiy;
+    return queues->has_found_graphics_family && queues->has_found_presenting_familiy && check_device_extension_support(device, required_extensions, required_extensions_count);
 }
 
+
+// DEBUG FUNCS ==============================================
 
 static VKAPI_ATTR VkBool32 
 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
