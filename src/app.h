@@ -65,6 +65,10 @@ struct sApp {
         sSwapchainSupportInfo swapchain_info;
         VkSwapchainKHR swapchain;
 
+        VkImage *swapchain_images;
+        uint32_t swapchain_images_count = 0;
+        uint32_t swapchain_images_index = 0;
+
         // Validation layers
         const char* required_validation_layers[2] = {
             "VK_LAYER_KHRONOS_validation",
@@ -134,6 +138,7 @@ struct sApp {
         vkDestroyDevice(Vulkan.device, NULL);
         vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);
         // TODO destroy the Utils messener: add it to the Vulkna struct
+        free(Vulkan.swapchain_images);
         vkDestroyInstance(Vulkan.instance, NULL);
         glfwDestroyWindow(window);
         glfwTerminate();

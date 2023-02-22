@@ -274,6 +274,23 @@ void sApp::_init_vulkan() {
                                    &Vulkan.swapchain), 
               "Swapchain creation");
     }
+
+    // ===================================
+    // GET IMAGES FROM SWAPCHAIN =========
+    // ===================================
+    {
+        vkGetSwapchainImagesKHR(Vulkan.device, 
+                                Vulkan.swapchain, 
+                                &Vulkan.swapchain_images_count, 
+                                NULL);
+
+        Vulkan.swapchain_images = (VkImage*) malloc(sizeof(VkImage) * Vulkan.swapchain_images_count);
+
+        vkGetSwapchainImagesKHR(Vulkan.device, 
+                                Vulkan.swapchain, 
+                                &Vulkan.swapchain_images_count, 
+                                Vulkan.swapchain_images);
+    }
 }
 
 
