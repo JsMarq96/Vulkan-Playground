@@ -37,8 +37,11 @@ struct sSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilites;
     VkSurfaceFormatKHR  *formats = NULL;
     uint32_t format_count = 0;
+    VkSurfaceFormatKHR selected_format;
+
     VkPresentModeKHR  *present_modes = NULL;
     uint32_t present_modes_count = 0;
+    VkPresentModeKHR  selected_present_mode;
 
     void clean() {
         free(formats);
@@ -60,6 +63,7 @@ struct sApp {
         VkQueue  present_queue;
         VkSurfaceKHR surface;
         sSwapchainSupportInfo swapchain_info;
+        VkSwapchainKHR swapchain;
 
         // Validation layers
         const char* required_validation_layers[2] = {
@@ -126,6 +130,7 @@ struct sApp {
 
     void _clean_up() {
         Vulkan.swapchain_info.clean();
+        vkDestroySwapchainKHR(Vulkan.device, Vulkan.swapchain, NULL);
         vkDestroyDevice(Vulkan.device, NULL);
         vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);
         // TODO destroy the Utils messener: add it to the Vulkna struct

@@ -15,11 +15,16 @@ bool is_device_suitable(const VkPhysicalDevice &device,
                         const VkSurfaceKHR &surface, 
                         const char** required_extensions,
                         const uint32_t required_extensions_count,
-                        sQueueFamilies* queues);
+                        sQueueFamilies* queues, 
+                        sSwapchainSupportInfo *swapchain_info);
 
 void get_swapchain_info(const VkPhysicalDevice& device,
                         const VkSurfaceKHR &surface,
                         sSwapchainSupportInfo *swapchain_info);
+
+void choose_swapchain_config(sSwapchainSupportInfo *swapchain_info);
+
+VkExtent2D choose_swapchain_extent(const VkSurfaceCapabilitiesKHR &capabilities);
 
 static VKAPI_ATTR VkBool32 
 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
@@ -133,16 +138,6 @@ void sApp::_init_vulkan() {
     }
 
     // ===================================
-    // LOAD SWAPCHAIN INFO ===============
-    // ===================================
-    {
-        get_swapchain_info(Vulkan.device, 
-                           Vulkan.surface, 
-                           &Vulkan.swapchain_info);
-    }
-
-
-    // ===================================
     // PICK PHYSICAL DEVICE ==============
     // ===================================
     {
@@ -164,7 +159,8 @@ void sApp::_init_vulkan() {
                                    Vulkan.surface,
                                    Vulkan.required_device_extensions, 
                                    Vulkan.required_device_extension_count,
-                                   &Vulkan.queues)) {
+                                   &Vulkan.queues, 
+                                   &Vulkan.swapchain_info)) {
                 Vulkan.physical_device = device_list[i];
                 break;
             }
@@ -230,6 +226,54 @@ void sApp::_init_vulkan() {
     }
 
     
+    // ===================================
+    // CREATE SWAPCHAIN ==================
+    // ===================================
+    {
+        choose_swapchain_config(&Vulkan.swapchain_info);
+
+        // One more, in order to avoid waiting for the driver in order to adquire the image
+        uint32_t image_count = Vulkan.swapchain_info.capabilites.minImageCount + 1;
+
+        // Check if we dont go over the max amount of images of the device
+        if (Vulkan.swapchain_info.capabilites.maxImageCount > 0 && 
+            image_count > Vulkan.swapchain_info.capabilites.maxImageCount) {
+            image_count = Vulkan.swapchain_info.capabilites.minImageCount;
+        }
+
+        uint32_t queue_familiy_indices[2] = { 
+            Vulkan.queues.graphics_family_id, 
+            Vulkan.queues.presenting_family_id 
+        };
+
+        bool use_concurrent_mode = Vulkan.queues.graphics_family_id != Vulkan.queues.presenting_family_id;
+
+        VkSwapchainCreateInfoKHR create_info = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .pNext = NULL,
+            .surface = Vulkan.surface,
+            .minImageCount = image_count,
+            .imageFormat = Vulkan.swapchain_info.selected_format.format,
+            .imageColorSpace = Vulkan.swapchain_info.selected_format.colorSpace,
+            .imageExtent = choose_swapchain_extent(Vulkan.swapchain_info.capabilites),
+            .imageArrayLayers = 1, 
+            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .imageSharingMode = (use_concurrent_mode) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE, // share images between queues families
+            .queueFamilyIndexCount = (uint32_t) ((use_concurrent_mode) ? 2 : 0),
+            .pQueueFamilyIndices = (use_concurrent_mode) ? queue_familiy_indices : NULL,
+            .preTransform = Vulkan.swapchain_info.capabilites.currentTransform, // Apply a transformation to the swapchian if wanted to
+            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR, // use alpha channel for blending
+            .presentMode = Vulkan.swapchain_info.selected_present_mode,
+            .clipped = VK_TRUE, // remove ocluded, on screen pixels (if a window overlaps for example),
+            .oldSwapchain = VK_NULL_HANDLE // Only used if we need to re create the swapchan, for example a resize
+        };
+
+        VK_OK(vkCreateSwapchainKHR(Vulkan.device, 
+                                   &create_info, 
+                                   NULL, 
+                                   &Vulkan.swapchain), 
+              "Swapchain creation");
+    }
 }
 
 
@@ -295,6 +339,33 @@ void get_swapchain_info(const VkPhysicalDevice& device,
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &swapchain_info->present_modes_count, swapchain_info->present_modes);
 }
 
+void choose_swapchain_config(sSwapchainSupportInfo *swapchain_info) {
+    // SWAPCHAIN FORMAT =================
+    // TODO: rank all the different available formats, and pick the best
+    swapchain_info->selected_format = swapchain_info->formats[0]; // Choose the first one by default
+    for(uint32_t i = 0; i < swapchain_info->format_count; i++) {
+        if (swapchain_info->formats[i].format == VK_FORMAT_B8G8R8_SRGB && 
+            swapchain_info->formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            swapchain_info->selected_format = swapchain_info->formats[i];
+            break;
+        }
+    }
+
+    // SWAPCHAIN PRESENT MODE ====
+    swapchain_info->selected_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    for(uint32_t i = 0; i < swapchain_info->present_modes_count; i++) {
+        if (swapchain_info->present_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            swapchain_info->selected_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+            break;
+        }
+    }
+}
+
+// TODO: VERY BAD NOT ACCOUNT FOR VERY HIGH PIXEL DENSITY SCREENS
+VkExtent2D choose_swapchain_extent(const VkSurfaceCapabilitiesKHR &capabilities) {
+    return capabilities.currentExtent;
+}
+
 
 // DEVICE FUNCS ============================================
 
@@ -331,7 +402,8 @@ bool is_device_suitable(const VkPhysicalDevice &device,
                         const VkSurfaceKHR &surface, 
                         const char** required_extensions,
                         const uint32_t required_extensions_count,
-                        sQueueFamilies* queues) {
+                        sQueueFamilies* queues, 
+                        sSwapchainSupportInfo *swap_info) {
     // TODO: check for VkPhyscallDeviceFeatures, for things like texture compression, multiviewport etc
     VkPhysicalDeviceProperties device_properties = {};
     vkGetPhysicalDeviceProperties(device, 
@@ -368,7 +440,17 @@ bool is_device_suitable(const VkPhysicalDevice &device,
 
     free(queue_properties);
 
-    return queues->has_found_graphics_family && queues->has_found_presenting_familiy && check_device_extension_support(device, required_extensions, required_extensions_count);
+    bool extension_support = check_device_extension_support(device, required_extensions, required_extensions_count);
+
+    // Check Swapchain support
+    bool is_swapchain_adequate = false;
+    if (extension_support) {
+        get_swapchain_info(device, surface, swap_info);
+
+        is_swapchain_adequate = swap_info->format_count > 0 && swap_info->present_modes_count > 0;
+    }
+
+    return queues->has_found_graphics_family && queues->has_found_presenting_familiy && extension_support && is_swapchain_adequate;
 }
 
 
