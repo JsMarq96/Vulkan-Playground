@@ -38,6 +38,8 @@ struct sSwapchainSupportInfo {
     uint32_t format_count = 0;
     VkSurfaceFormatKHR selected_format;
 
+    VkExtent2D swapchain_extent;
+
     VkPresentModeKHR  *present_modes = NULL;
     uint32_t present_modes_count = 0;
     VkPresentModeKHR  selected_present_mode;

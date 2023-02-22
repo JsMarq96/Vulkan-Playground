@@ -248,6 +248,8 @@ void sApp::_init_vulkan() {
 
         bool use_concurrent_mode = Vulkan.queues.graphics_family_id != Vulkan.queues.presenting_family_id;
 
+        Vulkan.swapchain_info.swapchain_extent = choose_swapchain_extent(Vulkan.swapchain_info.capabilites);
+
         VkSwapchainCreateInfoKHR create_info = {
             .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
             .pNext = NULL,
@@ -255,7 +257,7 @@ void sApp::_init_vulkan() {
             .minImageCount = image_count,
             .imageFormat = Vulkan.swapchain_info.selected_format.format,
             .imageColorSpace = Vulkan.swapchain_info.selected_format.colorSpace,
-            .imageExtent = choose_swapchain_extent(Vulkan.swapchain_info.capabilites),
+            .imageExtent = Vulkan.swapchain_info.swapchain_extent, // size of the swapchain iamges
             .imageArrayLayers = 1, 
             .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
             .imageSharingMode = (use_concurrent_mode) ? VK_SHARING_MODE_CONCURRENT : VK_SHARING_MODE_EXCLUSIVE, // share images between queues families
