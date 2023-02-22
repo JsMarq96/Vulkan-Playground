@@ -18,13 +18,12 @@
 #include <cassert>
 #include <iostream>
 
+#include "utils.h"
+
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
 #define WINDOW_NAME   "Vulkan test"
 #define ENGINE_NAME   "No engine"
-
-#define assert_msg(condition, msg) if (!(condition)) {std::cout << msg << std::endl; assert(false);}
-#define VK_OK(result, msg) if ((result) != VK_SUCCESS) { std::cout << "Vulkan validation error: " << result << " on " << msg << std::endl; assert(false);}
 
 struct sQueueFamilies {
     uint32_t graphics_family_id;
@@ -95,6 +94,7 @@ struct sApp {
     void run() {
         _init_window();
         _init_vulkan();
+        _create_graphics_pipeline();
         _main_loop();
         _clean_up();
     };
@@ -132,6 +132,8 @@ struct sApp {
     }
 
     void _init_vulkan();
+
+    void _create_graphics_pipeline();
 
     void _clean_up() {
         Vulkan.swapchain_info.clean();
