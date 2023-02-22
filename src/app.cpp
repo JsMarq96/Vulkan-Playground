@@ -291,6 +291,43 @@ void sApp::_init_vulkan() {
                                 &Vulkan.swapchain_images_count, 
                                 Vulkan.swapchain_images);
     }
+
+
+    // ===================================
+    // CREATE IMAGE VIEWS ================
+    // ===================================
+    {
+        Vulkan.swapchain_image_views = (VkImageView*) malloc(sizeof(VkImageView) * Vulkan.swapchain_images_count);
+
+        for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
+            VkImageViewCreateInfo create_info = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .pNext = NULL,
+                .image = Vulkan.swapchain_images[i],
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = Vulkan.swapchain_info.selected_format.format,
+                .components = { // Alter the was the RGBA channels are stored. Leave it as it comes
+                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .a = VK_COMPONENT_SWIZZLE_IDENTITY
+                },
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, // Wich aspect of the iamge are used, in this case just the color
+                    .baseMipLevel = 0,
+                    .levelCount = 1, // No need for mipmaping (for now) on the swapchain
+                    .baseArrayLayer = 0, // multiplelayers could be usefull for multiple perspectives rendered at the same time
+                    .layerCount = 1
+                }
+            };
+
+            VK_OK(vkCreateImageView(Vulkan.device, 
+                                    &create_info, 
+                                    NULL, 
+                                    &Vulkan.swapchain_image_views[i]),
+                 "Error creating image views of swapchain");
+        }
+    }
 }
 
 

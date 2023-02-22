@@ -66,6 +66,7 @@ struct sApp {
         VkSwapchainKHR swapchain;
 
         VkImage *swapchain_images;
+        VkImageView *swapchain_image_views;
         uint32_t swapchain_images_count = 0;
         uint32_t swapchain_images_index = 0;
 
@@ -134,6 +135,9 @@ struct sApp {
 
     void _clean_up() {
         Vulkan.swapchain_info.clean();
+        for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
+            vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
+        }
         vkDestroySwapchainKHR(Vulkan.device, Vulkan.swapchain, NULL);
         vkDestroyDevice(Vulkan.device, NULL);
         vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);
