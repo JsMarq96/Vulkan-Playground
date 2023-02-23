@@ -440,7 +440,6 @@ inline bool check_device_extension_support(const VkPhysicalDevice &device,
     uint32_t extensions_available_count = 0;
     for(uint32_t i = 0; i < required_extensions_count; i++) {
         for(uint32_t j = 0; j < device_extension_count; j++) {
-            std::cout << device_extensions[j].extensionName  << "   " <<  required_extensions[i] << std::endl;
             if (strcmp(device_extensions[j].extensionName, required_extensions[i]) == 0) {
                 device_extensions[j].extensionName[0] = '\0'; // Early skips for next iterations
                 extensions_available_count++;
