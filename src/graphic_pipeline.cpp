@@ -4,6 +4,57 @@
 //https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions
 void sApp::_create_graphics_pipeline() {
     // ===================================
+    // RENDER-PASS: COLOR ATTACH =========
+    // ===================================
+    VkAttachmentDescription color_attachments;
+    {
+        color_attachments = {
+            .format = Vulkan.swapchain_info.selected_format.format,
+            .samples = VK_SAMPLE_COUNT_1_BIT, // Multisampling
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR, // Clean the values from anoter pass on load
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR // This is used the color of the swapchain
+        };
+    }
+
+    // ===================================
+    // RENDER-PASS: SUBPASSES ============
+    // ===================================
+    VkAttachmentReference color_attachment_ref;
+    color_attachment_ref = {
+        .attachment = 0,
+        .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL //  layout(lcoation=0) out vec4 out_color;
+    };
+    VkSubpassDescription render_subpass = {
+        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS, // gracphis subpass, since it can be a compute
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &color_attachment_ref
+    };
+
+    // ===================================
+    // RENDER-PASS: RENDERPASS CREATE ====
+    // ===================================
+    {
+        VkRenderPassCreateInfo renderpass_create_info = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .pNext = NULL,
+            .attachmentCount = 1,
+            .pAttachments = &color_attachments,
+            .subpassCount = 1,
+            .pSubpasses = &render_subpass
+        };
+
+        VK_OK(vkCreateRenderPass(Vulkan.device, 
+                                 &renderpass_create_info,
+                                 NULL, 
+                                 &Vulkan.render_pass), 
+              "Create renderpass");
+    }
+
+    // ===================================
     // LOAD SHADERS & CREATE STAGES ======
     // ===================================
     VkShaderModule vert_shader, frag_shader;
@@ -134,7 +185,107 @@ void sApp::_create_graphics_pipeline() {
     // ===================================
     // MUTISAMPLING CONFIG ===============
     // ===================================
+    VkPipelineMultisampleStateCreateInfo multisampling_create_info;
+    // Disable for now
     {
-
+        multisampling_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .pNext = NULL,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .sampleShadingEnable = VK_FALSE,
+            .minSampleShading = 1.0f,
+            .pSampleMask = NULL,
+            .alphaToCoverageEnable = VK_FALSE,
+            .alphaToOneEnable = VK_FALSE
+        };
     }
-}//
+
+    // ===================================
+    // DEPTH & STENCIL CONFIG ============
+    // ===================================
+    // N/A
+
+
+    // ===================================
+    // COLOR BLENDING CONFIG =============
+    // ===================================
+    VkPipelineColorBlendAttachmentState color_blend_state;
+    VkPipelineColorBlendStateCreateInfo color_blend_state_create_info;
+    {
+        color_blend_state = {
+            .blendEnable = VK_FALSE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .colorBlendOp = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = VK_BLEND_OP_ADD,
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+        };
+
+        color_blend_state_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .pNext = NULL,
+            .logicOpEnable = VK_FALSE,
+            .logicOp = VK_LOGIC_OP_COPY,
+            .attachmentCount = 1,
+            .pAttachments = &color_blend_state,
+            .blendConstants = {0.0f, 0.0f, 0.0f, 0.0f}
+        };
+    }
+
+    // ===================================
+    // PIPELINE LAYOUT ===================
+    // ===================================
+    {
+        VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pNext = NULL,
+            .setLayoutCount = 0,
+            .pSetLayouts = NULL,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = NULL
+        };
+
+        VK_OK(vkCreatePipelineLayout(Vulkan.device, 
+                                     &pipeline_layout_create_info,
+                                     NULL,
+                                     &Vulkan.pipeline_layout), 
+              "Creating pipeline layout");
+    }
+
+
+    // ===================================
+    // CREATE PIPELINE ===================
+    // ===================================
+    {
+        VkGraphicsPipelineCreateInfo pipeline_create_info = {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .stageCount = 2,
+            .pStages = shader_stages_create_info,
+            .pVertexInputState = &vertex_input_stage_create_info,
+            .pInputAssemblyState = &input_assembly_stage_create_info,
+            .pViewportState = &view_port_create_info,
+            .pRasterizationState = &rasterizer_state_create_info,
+            .pMultisampleState = &multisampling_create_info,
+            .pDepthStencilState = NULL,
+            .pColorBlendState = &color_blend_state_create_info,
+            .pDynamicState = &dynamic_state_stage_create_info,
+            .layout = Vulkan.pipeline_layout,
+            .renderPass = Vulkan.render_pass,
+            .subpass = 0,
+            .basePipelineHandle = VK_NULL_HANDLE, // For creating a pipeline from another pipeline, in order to replace it
+            .basePipelineIndex = -1
+        };
+
+        VK_OK(vkCreateGraphicsPipelines(Vulkan.device, 
+                                        NULL, 
+                                        1, 
+                                        &pipeline_create_info, 
+                                        NULL, 
+                                        &Vulkan.graphics_pipeline),
+              "Creating graphcis pipeline");
+    }
+}

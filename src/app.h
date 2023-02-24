@@ -65,6 +65,9 @@ struct sApp {
         VkSurfaceKHR surface;
         sSwapchainSupportInfo swapchain_info;
         VkSwapchainKHR swapchain;
+        VkPipeline graphics_pipeline;
+        VkRenderPass render_pass;
+        VkPipelineLayout pipeline_layout;
 
         VkImage *swapchain_images;
         VkImageView *swapchain_image_views;
@@ -138,6 +141,9 @@ struct sApp {
     void _create_graphics_pipeline();
 
     void _clean_up() {
+        vkDestroyPipeline(Vulkan.device, Vulkan.graphics_pipeline, nullptr);
+        vkDestroyPipelineLayout(Vulkan.device, Vulkan.pipeline_layout, nullptr);
+        vkDestroyRenderPass(Vulkan.device, Vulkan.render_pass, NULL);
         Vulkan.swapchain_info.clean();
         for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
