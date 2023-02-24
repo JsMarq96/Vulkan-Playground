@@ -2,7 +2,8 @@
 #include "shader.h"
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
-//https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions
+//https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation
+// Creating the synchronization objects
 void sApp::_create_graphics_pipeline() {
     // ===================================
     // RENDER-PASS: COLOR ATTACH =========

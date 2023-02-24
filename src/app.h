@@ -83,6 +83,10 @@ struct sApp {
         VkCommandPool command_pool;
         VkCommandBuffer command_buffer;
 
+        VkSemaphore iamge_available_semaphore;
+        VkSemaphore render_finished_semaphore;
+        VkFence in_flight_fence; // ???
+
         // Validation layers
         const char* required_validation_layers[2] = {
             "VK_LAYER_KHRONOS_validation",
