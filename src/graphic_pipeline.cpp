@@ -1,5 +1,6 @@
 #include "app.h"
 #include "shader.h"
+#include <stdint.h>
 #include <vulkan/vulkan_core.h>
 //https://vulkan-tutorial.com/en/Drawing_a_triangle/Graphics_pipeline_basics/Fixed_functions
 void sApp::_create_graphics_pipeline() {
@@ -288,4 +289,158 @@ void sApp::_create_graphics_pipeline() {
                                         &Vulkan.graphics_pipeline),
               "Creating graphcis pipeline");
     }
+}
+
+
+
+void sApp::_create_framebuffers() {
+    Vulkan.framebuffers = (VkFramebuffer*) malloc(sizeof(VkFramebuffer) * Vulkan.swapchain_images_count);
+    Vulkan.framebuffers_count = Vulkan.swapchain_images_count;
+
+    VkFramebufferCreateInfo frame_buffer_create_info = {
+        .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .renderPass = Vulkan.render_pass,
+        .attachmentCount = 1,
+        .pAttachments = NULL,
+        .width = Vulkan.swapchain_info.swapchain_extent.width,
+        .height = Vulkan.swapchain_info.swapchain_extent.height,
+        .layers = 1
+    };
+
+    // For each imageviewof the swapchain, create a framebuffer
+    for(uint32_t i = 0; Vulkan.framebuffers_count > i; i++) {
+        VkImageView attachments[1] = { Vulkan.swapchain_image_views[i] };
+
+        frame_buffer_create_info.pAttachments = attachments;
+
+        VK_OK(vkCreateFramebuffer(Vulkan.device, 
+                                  &frame_buffer_create_info, 
+                                  NULL, 
+                                  &Vulkan.framebuffers[i]),
+              "Error creating framebuffer");
+    }
+}
+
+
+void sApp::_create_command_buffers() {
+    // ===================================
+    // CREATE CMD POOL ===================
+    // ===================================
+    {
+        VkCommandPoolCreateInfo pool_create_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .pNext = NULL,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,// update the command bufferes individually
+            .queueFamilyIndex = Vulkan.queues.graphics_family_id
+        };
+
+        VK_OK(vkCreateCommandPool(Vulkan.device, 
+                                  &pool_create_info, 
+                                  NULL, 
+                                  &Vulkan.command_pool),
+              "Create command pool");
+    }
+
+    // ===================================
+    // CREATE CMD BUFFER =================
+    // ===================================
+    {
+        VkCommandBufferAllocateInfo command_buff_alloc_info = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = Vulkan.command_pool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, // Sbumited directly, not from other command buffers (?)
+            .commandBufferCount = 1
+        };
+
+        VK_OK(vkAllocateCommandBuffers(Vulkan.device, 
+                                       &command_buff_alloc_info, 
+                                       &Vulkan.command_buffer),
+              "Command buffer creation");
+    }
+
+    // ===================================
+    // RECORD CMD BUFFER =================
+    // ===================================
+    {
+        //record_command_buffer(Vulkan.command_buffer, Vulkan.render_pass, )
+    }
+}
+
+
+// ===================================
+// COMMAND BUFFER FUNCS
+
+void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
+                                 const VkRenderPass &render_pass,
+                                 const uint32_t image_index) {
+    VkCommandBufferBeginInfo cmd_buff_begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .pInheritanceInfo = NULL,
+    };
+
+    VK_OK(vkBeginCommandBuffer(command_buffer, 
+                              &cmd_buff_begin_info), 
+          "Begin recording of command buffer");
+
+    // Config the render pass
+    VkClearValue clear_color = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    VkRenderPassBeginInfo render_pass_begin_info = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .pNext = NULL,
+        .renderPass = render_pass,
+        .framebuffer = Vulkan.framebuffers[image_index],
+        .renderArea = { 
+            .offset = {0, 0},
+            .extent = Vulkan.swapchain_info.swapchain_extent
+        },
+        .clearValueCount = 1,
+        .pClearValues = &clear_color
+    };
+
+    vkCmdBeginRenderPass(command_buffer, 
+                         &render_pass_begin_info, 
+                         VK_SUBPASS_CONTENTS_INLINE); // The commands will be embedded on the primery command buffer
+    
+    vkCmdBindPipeline(command_buffer, 
+                      VK_PIPELINE_BIND_POINT_GRAPHICS, // Graphis pipeline, not compute
+                      Vulkan.graphics_pipeline);
+
+    // Set the viewport and the scissor
+    {
+        VkViewport viewport = {
+            .x = 0.0f, .y = 0.0f,
+            .width = (float) Vulkan.swapchain_info.swapchain_extent.width,
+            .height = (float) Vulkan.swapchain_info.swapchain_extent.height,
+            .minDepth = 0.0f,
+            .maxDepth = 1.0f
+        };
+
+        VkRect2D scissor = {
+            .offset = {0, 0},
+            .extent = Vulkan.swapchain_info.swapchain_extent
+        };
+
+        vkCmdSetViewport(command_buffer, 
+                         0, 
+                         1, 
+                         &viewport);
+        vkCmdSetScissor(command_buffer, 
+                        0, 
+                        1, 
+                        &scissor);
+    }
+
+    vkCmdDraw(command_buffer, 
+              3, // Vertex count 
+              1, // instance count instanced rendering
+              0, // first vertex
+              0); // first isntance
+            
+    vkCmdEndRenderPass(command_buffer);
+
+    VK_OK(vkEndCommandBuffer(command_buffer), 
+          "End Command buffer");
 }

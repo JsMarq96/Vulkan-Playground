@@ -60,19 +60,28 @@ struct sApp {
         VkPhysicalDevice physical_device = VK_NULL_HANDLE;
         sQueueFamilies queues;
         VkDevice device; // logical device
+
         VkQueue  graphics_queue;
         VkQueue  present_queue;
         VkSurfaceKHR surface;
+
         sSwapchainSupportInfo swapchain_info;
         VkSwapchainKHR swapchain;
+
         VkPipeline graphics_pipeline;
         VkRenderPass render_pass;
         VkPipelineLayout pipeline_layout;
+
+        VkFramebuffer *framebuffers = NULL;
+        uint32_t framebuffers_count = 0;
 
         VkImage *swapchain_images;
         VkImageView *swapchain_image_views;
         uint32_t swapchain_images_count = 0;
         uint32_t swapchain_images_index = 0;
+
+        VkCommandPool command_pool;
+        VkCommandBuffer command_buffer;
 
         // Validation layers
         const char* required_validation_layers[2] = {
@@ -100,6 +109,8 @@ struct sApp {
         _init_window();
         _init_vulkan();
         _create_graphics_pipeline();
+        _create_framebuffers();
+        _create_command_buffers();
         _main_loop();
         _clean_up();
     };
@@ -140,7 +151,18 @@ struct sApp {
 
     void _create_graphics_pipeline();
 
-    void _clean_up() {
+    void _create_framebuffers();
+
+    void _create_command_buffers();
+
+    void _clean_up() { 
+        vkDestroyCommandPool(Vulkan.device, Vulkan.command_pool, NULL);
+
+        for(uint32_t i = 0; i < Vulkan.framebuffers_count; i++) {
+            vkDestroyFramebuffer(Vulkan.device, Vulkan.framebuffers[i], NULL);
+        }
+        free(Vulkan.framebuffers);
+
         vkDestroyPipeline(Vulkan.device, Vulkan.graphics_pipeline, nullptr);
         vkDestroyPipelineLayout(Vulkan.device, Vulkan.pipeline_layout, nullptr);
         vkDestroyRenderPass(Vulkan.device, Vulkan.render_pass, NULL);
@@ -157,6 +179,10 @@ struct sApp {
         glfwDestroyWindow(window);
         glfwTerminate();
     }
+
+    void record_command_buffer(const VkCommandBuffer &command_buffer,
+                           const VkRenderPass &render_pass,
+                           const uint32_t image_index);
 
     void _main_loop() {
         while(!glfwWindowShouldClose(window)) {
