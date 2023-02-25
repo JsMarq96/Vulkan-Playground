@@ -83,7 +83,7 @@ struct sApp {
         VkCommandPool command_pool;
         VkCommandBuffer command_buffer;
 
-        VkSemaphore iamge_available_semaphore;
+        VkSemaphore image_available_semaphore;
         VkSemaphore render_finished_semaphore;
         VkFence in_flight_fence; // ???
 
@@ -159,6 +159,10 @@ struct sApp {
 
     void _create_command_buffers();
 
+    void _create_sync_objects();
+
+    void _render_frame();
+
     void _clean_up() { 
         vkDestroyCommandPool(Vulkan.device, Vulkan.command_pool, NULL);
 
@@ -191,6 +195,9 @@ struct sApp {
     void _main_loop() {
         while(!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+            _render_frame();
         }
+
+        vkDeviceWaitIdle(Vulkan.device);
     }
 };

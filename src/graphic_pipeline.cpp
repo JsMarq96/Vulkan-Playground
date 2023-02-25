@@ -1,5 +1,6 @@
 #include "app.h"
 #include "shader.h"
+#include <cstddef>
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 //https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation
@@ -40,13 +41,25 @@ void sApp::_create_graphics_pipeline() {
     // RENDER-PASS: RENDERPASS CREATE ====
     // ===================================
     {
+         // Subpass transition (??)
+        VkSubpassDependency dependency = {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+        };
+
         VkRenderPassCreateInfo renderpass_create_info = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
             .pNext = NULL,
             .attachmentCount = 1,
             .pAttachments = &color_attachments,
             .subpassCount = 1,
-            .pSubpasses = &render_subpass
+            .pSubpasses = &render_subpass,
+            .dependencyCount = 1,
+            .pDependencies = &dependency
         };
 
         VK_OK(vkCreateRenderPass(Vulkan.device, 
@@ -444,4 +457,22 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
 
     VK_OK(vkEndCommandBuffer(command_buffer), 
           "End Command buffer");
+}
+
+
+void sApp::_create_sync_objects() {
+    VkSemaphoreCreateInfo semaphore_create_info = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+    };
+
+    VkFenceCreateInfo fence_create_info = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    };
+
+    VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.image_available_semaphore), "Create semaphore");
+    VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.render_finished_semaphore), "Create semaphore");
+    VK_OK(vkCreateFence(Vulkan.device, &fence_create_info, NULL, &Vulkan.in_flight_fence), "Create fence");
 }
