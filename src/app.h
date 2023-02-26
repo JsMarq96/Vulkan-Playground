@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 #ifdef _WIN32
@@ -25,6 +26,8 @@
 #define WINDOW_HEIGHT 600
 #define WINDOW_NAME   "Vulkan test"
 #define ENGINE_NAME   "No engine"
+
+#define MAX_FRAMES_IN_FLIGHT 2
 
 struct sQueueFamilies {
     uint32_t graphics_family_id;
@@ -82,11 +85,12 @@ struct sApp {
         uint32_t swapchain_images_index = 0;
 
         VkCommandPool command_pool;
-        VkCommandBuffer command_buffer;
+        VkCommandBuffer command_buffers[MAX_FRAMES_IN_FLIGHT];
 
-        VkSemaphore image_available_semaphore;
-        VkSemaphore render_finished_semaphore;
-        VkFence in_flight_fence; // ???
+        uint32_t    current_frame = 0;
+        VkSemaphore image_available_semaphore[MAX_FRAMES_IN_FLIGHT];
+        VkSemaphore render_finished_semaphore[MAX_FRAMES_IN_FLIGHT];
+        VkFence in_flight_fence[MAX_FRAMES_IN_FLIGHT]; // ???
 
         // Validation layers
         const char* required_validation_layers[2] = {
@@ -167,9 +171,11 @@ struct sApp {
 
     // TODO: clean shaders
     void _clean_up() {
-        vkDestroySemaphore(Vulkan.device, Vulkan.image_available_semaphore, NULL);
-        vkDestroySemaphore(Vulkan.device, Vulkan.render_finished_semaphore, NULL);
-        vkDestroyFence(Vulkan.device, Vulkan.in_flight_fence, NULL);
+        for(uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroySemaphore(Vulkan.device, Vulkan.image_available_semaphore[i], NULL);
+            vkDestroySemaphore(Vulkan.device, Vulkan.render_finished_semaphore[i], NULL);
+            vkDestroyFence(Vulkan.device, Vulkan.in_flight_fence[i], NULL);
+        }
         vkDestroyCommandPool(Vulkan.device, Vulkan.command_pool, NULL);
 
         for(uint32_t i = 0; i < Vulkan.framebuffers_count; i++) {

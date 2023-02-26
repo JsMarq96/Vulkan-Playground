@@ -364,12 +364,12 @@ void sApp::_create_command_buffers() {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = Vulkan.command_pool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, // Sbumited directly, not from other command buffers (?)
-            .commandBufferCount = 1
+            .commandBufferCount = MAX_FRAMES_IN_FLIGHT
         };
 
         VK_OK(vkAllocateCommandBuffers(Vulkan.device, 
                                        &command_buff_alloc_info, 
-                                       &Vulkan.command_buffer),
+                                       Vulkan.command_buffers),
               "Command buffer creation");
     }
 
@@ -472,7 +472,9 @@ void sApp::_create_sync_objects() {
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.image_available_semaphore), "Create semaphore");
-    VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.render_finished_semaphore), "Create semaphore");
-    VK_OK(vkCreateFence(Vulkan.device, &fence_create_info, NULL, &Vulkan.in_flight_fence), "Create fence");
+    for(uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.image_available_semaphore[i]), "Create semaphore");
+        VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.render_finished_semaphore[i]), "Create semaphore");
+        VK_OK(vkCreateFence(Vulkan.device, &fence_create_info, NULL, &Vulkan.in_flight_fence[i]), "Create fence");
+    }
 }
