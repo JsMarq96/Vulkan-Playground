@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
 #ifdef _WIN32
@@ -115,6 +116,7 @@ struct sApp {
         _create_graphics_pipeline();
         _create_framebuffers();
         _create_command_buffers();
+        _create_sync_objects();
         _main_loop();
         _clean_up();
     };
@@ -163,7 +165,11 @@ struct sApp {
 
     void _render_frame();
 
-    void _clean_up() { 
+    // TODO: clean shaders
+    void _clean_up() {
+        vkDestroySemaphore(Vulkan.device, Vulkan.image_available_semaphore, NULL);
+        vkDestroySemaphore(Vulkan.device, Vulkan.render_finished_semaphore, NULL);
+        vkDestroyFence(Vulkan.device, Vulkan.in_flight_fence, NULL);
         vkDestroyCommandPool(Vulkan.device, Vulkan.command_pool, NULL);
 
         for(uint32_t i = 0; i < Vulkan.framebuffers_count; i++) {

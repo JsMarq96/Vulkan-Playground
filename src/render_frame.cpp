@@ -15,13 +15,12 @@ void sApp::_render_frame() {
                   1,
                   &Vulkan.in_flight_fence);
     // Adquire swapchian image
-    uint32_t image_index;
     vkAcquireNextImageKHR(Vulkan.device,
                           Vulkan.swapchain,
                           UINT64_MAX,
                           Vulkan.image_available_semaphore,
                           VK_NULL_HANDLE,
-                          &image_index);
+                          &Vulkan.swapchain_images_index);
 
     // Add teh command buffer
     vkResetCommandBuffer(Vulkan.command_buffer,
@@ -29,7 +28,7 @@ void sApp::_render_frame() {
 
     record_command_buffer(Vulkan.command_buffer,
                           Vulkan.render_pass,
-                          image_index);
+                          Vulkan.swapchain_images_index);
 
     // Submit the command buffer
     VkPipelineStageFlags wait_stagers[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -52,6 +51,12 @@ void sApp::_render_frame() {
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .pNext = NULL,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &Vulkan.render_finished_semaphore
+        .pWaitSemaphores = &Vulkan.render_finished_semaphore,
+        .swapchainCount = 1,
+        .pSwapchains = &Vulkan.swapchain,
+        .pImageIndices = &Vulkan.swapchain_images_index,
+        .pResults = NULL
     };
+
+    VK_OK(vkQueuePresentKHR(Vulkan.graphics_queue, &present_info), "Presenting frame");
 }
