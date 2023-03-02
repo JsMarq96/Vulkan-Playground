@@ -348,16 +348,19 @@ uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
 void sApp::_create_vertex_buffer() {
     VkDeviceSize buffer_size = sizeof(Geometry::Meshes::SingleTriangle::vertices);
 
-    create_buffer(buffer_size, 
-                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-                  &Vulkan.vertex_buffer, 
-                  &Vulkan.vertex_buffer_memmory);
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
 
-    // Upload Data to the memory
+    create_buffer(buffer_size, 
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                  &staging_buffer, 
+                  &staging_buffer_memory);
+
+    // Upload Data to the stating buffer's memory
     void *upload_data;
     VK_OK(vkMapMemory(Vulkan.device, 
-                     Vulkan.vertex_buffer_memmory,
+                     staging_buffer_memory,
                      0, // Offset on the memory
                      buffer_size, 
                      0, // Flags, but there are none on the api
@@ -369,7 +372,25 @@ void sApp::_create_vertex_buffer() {
            buffer_size);
     
     vkUnmapMemory(Vulkan.device, 
-                 Vulkan.vertex_buffer_memmory);
+                  staging_buffer_memory);
+    
+    
+    create_buffer(buffer_size, 
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, // More optimal layout in memory
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+                  &Vulkan.vertex_buffer, 
+                  &Vulkan.vertex_buffer_memmory);
+
+    copy_buffer(staging_buffer, 
+                Vulkan.vertex_buffer, 
+                buffer_size);
+
+    vkDestroyBuffer(Vulkan.device, 
+                    staging_buffer, 
+                    NULL);
+    vkFreeMemory(Vulkan.device, 
+                 staging_buffer_memory, 
+                 NULL);
 }
 
 void sApp::_create_index_buffer() {
@@ -608,4 +629,65 @@ void sApp::create_buffer(const VkDeviceSize &size,
                        *buffer, 
                        *buffer_memory, 
                        0); // Offset
+}
+
+void sApp::copy_buffer(const VkBuffer &src_buffer,
+                       const VkBuffer dst_buffer,
+                       const VkDeviceSize size) {
+    // Create & start the comand buffer
+    VkCommandBufferAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = NULL,
+        .commandPool = Vulkan.command_pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, // high propity
+        .commandBufferCount = 1
+    };
+
+    VkCommandBuffer command_buffer;
+    vkAllocateCommandBuffers(Vulkan.device, 
+                             &alloc_info, 
+                             &command_buffer);
+
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .pNext = NULL,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+    };
+
+    // Record just the copy operation on the command buffer
+    vkBeginCommandBuffer(command_buffer, 
+                         &begin_info);
+
+    VkBufferCopy copy_region = {
+        .srcOffset = 0,
+        .dstOffset = 0,
+        .size = size
+    };
+
+    vkCmdCopyBuffer(command_buffer, 
+                    src_buffer,
+                    dst_buffer,
+                    1, // only one region to copy
+                    &copy_region);
+
+    vkEndCommandBuffer(command_buffer);
+
+    // Submit & launch the command buffer
+    VkSubmitInfo submit_info = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &command_buffer
+    };
+
+    vkQueueSubmit(Vulkan.graphics_queue, 
+                  1,
+                  &submit_info, 
+                  VK_NULL_HANDLE);
+
+    vkQueueWaitIdle(Vulkan.graphics_queue); // Note a fence could allow multiple transfers at the same time!
+
+    vkFreeCommandBuffers(Vulkan.device, 
+                         Vulkan.command_pool, 
+                         1, 
+                         &command_buffer);
 }

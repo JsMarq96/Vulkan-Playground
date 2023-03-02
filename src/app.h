@@ -184,6 +184,7 @@ struct sApp {
                        const VkMemoryPropertyFlags memmory_properties, 
                        VkBuffer *buffer, 
                        VkDeviceMemory *buffer_memory);
+    void copy_buffer(const VkBuffer &src_buffer, const VkBuffer dst_buffer, const VkDeviceSize size);
 
     // TODO: clean shaders
     void _clean_up() {
