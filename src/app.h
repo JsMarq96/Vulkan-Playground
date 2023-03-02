@@ -29,6 +29,8 @@
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
+// TODO: https://vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer
+
 struct sQueueFamilies {
     uint32_t graphics_family_id;
     bool has_found_graphics_family = false;
@@ -88,6 +90,8 @@ struct sApp {
 
         VkBuffer vertex_buffer;
         VkDeviceMemory vertex_buffer_memmory;
+        VkBuffer index_buffer;
+        VkDeviceMemory index_buffer_memory;
 
         uint32_t    current_frame = 0;
         VkSemaphore image_available_semaphore[MAX_FRAMES_IN_FLIGHT];
@@ -169,9 +173,17 @@ struct sApp {
 
     void _create_vertex_buffer();
 
+    void _create_index_buffer();
+
     void _create_sync_objects();
 
     void _render_frame();
+
+    void create_buffer(const VkDeviceSize &size, 
+                       const VkBufferUsageFlags usage,
+                       const VkMemoryPropertyFlags memmory_properties, 
+                       VkBuffer *buffer, 
+                       VkDeviceMemory *buffer_memory);
 
     // TODO: clean shaders
     void _clean_up() {

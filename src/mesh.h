@@ -20,12 +20,28 @@ namespace Geometry {
     };
 
     namespace Meshes {
-        sVertex2D SingleTriangle[3] = {
-                { .position = {0.0f, -0.5f}, .color = {1.0f, 0.0f, 0.0f}},
-                { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f}},
-                { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 1.0f}}
+        namespace SingleTriangle {
+            const uint32_t indices_count = 3;
+            const uint32_t indices[3] = { 0,1,2 };
+            const uint32_t vertices_count = 3;
+            const sVertex2D vertices[3] = {
+                    { .position = {0.0f, -0.5f}, .color = {1.0f, 0.0f, 0.0f} },
+                    { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f} },
+                    { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 1.0f} }
+            };
         };
-        uint32_t SingleTriangleCount = 3;
+
+        namespace Quad {
+            const uint32_t indices_count = 6;
+            const uint32_t indices[6] = { 0, 1, 2, 2, 3, 0 };
+            const uint32_t vertices_count = 4;
+            const sVertex2D vertices[4] = {
+                    { .position = {-0.5f, -0.5f}, .color = {1.0f, 0.0f, 0.0f} },
+                    { .position = {0.5f, -0.5f}, .color = {0.0f, 1.0f, 0.0f} },
+                    { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f} },
+                    { .position = {-0.5f, 0.5f}, .color = {1.0f, 1.0f, 1.0f} }
+            };
+        };
     };
 
 

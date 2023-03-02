@@ -346,64 +346,34 @@ uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
                            const VkMemoryPropertyFlags &properties);
 
 void sApp::_create_vertex_buffer() {
-    // Create Buffer
-    VkBufferCreateInfo vertex_buffer_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .pNext = NULL,
-        .size = sizeof(Geometry::Meshes::SingleTriangle),
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-    };
+    VkDeviceSize buffer_size = sizeof(Geometry::Meshes::SingleTriangle::vertices);
 
-    VK_OK(vkCreateBuffer(Vulkan.device, 
-                        &vertex_buffer_info,
-                        NULL, 
-                        &Vulkan.vertex_buffer), 
-         "Creating vertex buffer");
-    
-    // Query memmory requirements
-    VkMemoryRequirements memory_requirements;
-    vkGetBufferMemoryRequirements(Vulkan.device,
-                                  Vulkan.vertex_buffer,
-                                  &memory_requirements);
-    
-    VkMemoryAllocateInfo alloc_info = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext = NULL,
-        .allocationSize = memory_requirements.size,
-        .memoryTypeIndex = find_memmory_type(Vulkan.physical_device, 
-                                             memory_requirements.memoryTypeBits, 
-                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) // HOST coherent to flush the mapped area before writing
-    };
+    create_buffer(buffer_size, 
+                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                  &Vulkan.vertex_buffer, 
+                  &Vulkan.vertex_buffer_memmory);
 
-    VK_OK(vkAllocateMemory(Vulkan.device, 
-                          &alloc_info, 
-                          NULL, 
-                          &Vulkan.vertex_buffer_memmory), 
-          "Allocating vertex buffer memory");
-    
-    // Associate the memory with the buffer description
-    vkBindBufferMemory(Vulkan.device, 
-                       Vulkan.vertex_buffer, 
-                       Vulkan.vertex_buffer_memmory, 
-                       0); // Offset
-    
     // Upload Data to the memory
     void *upload_data;
     VK_OK(vkMapMemory(Vulkan.device, 
                      Vulkan.vertex_buffer_memmory,
                      0, // Offset on the memory
-                     vertex_buffer_info.size, 
+                     buffer_size, 
                      0, // Flags, but there are none on the api
                      &upload_data), 
          "Mapping memory");
     
     memcpy(upload_data, 
-           (void*) Geometry::Meshes::SingleTriangle, 
-           vertex_buffer_info.size);
+           (void*) Geometry::Meshes::SingleTriangle::vertices, 
+           buffer_size);
     
     vkUnmapMemory(Vulkan.device, 
                  Vulkan.vertex_buffer_memmory);
+}
+
+void sApp::_create_index_buffer() {
+    //
 }
 
 void sApp::_create_command_buffers() {
@@ -538,7 +508,7 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
     }
 
     vkCmdDraw(command_buffer, 
-              Geometry::Meshes::SingleTriangleCount, // Vertex count 
+              Geometry::Meshes::SingleTriangle::vertices_count, // Vertex count 
               1, // instance count instanced rendering
               0, // first vertex
               0); // first isntance
@@ -589,4 +559,53 @@ uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
 
     assert_msg(false, "No usable memmory type");
     return 0; // TODO: not very good
+}
+
+
+void sApp::create_buffer(const VkDeviceSize &size, 
+                         const VkBufferUsageFlags usage,
+                         const VkMemoryPropertyFlags memmory_properties, 
+                         VkBuffer *buffer, 
+                         VkDeviceMemory *buffer_memory) {
+    // Create Buffer
+    VkBufferCreateInfo vertex_buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .size = size,
+        .usage = usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    VK_OK(vkCreateBuffer(Vulkan.device, 
+                        &vertex_buffer_info,
+                        NULL, 
+                        buffer), 
+         "Creating buffer");
+    
+    // Query memmory requirements
+    VkMemoryRequirements memory_requirements;
+    vkGetBufferMemoryRequirements(Vulkan.device,
+                                  *buffer,
+                                  &memory_requirements);
+    
+    VkMemoryAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = NULL,
+        .allocationSize = memory_requirements.size,
+        .memoryTypeIndex = find_memmory_type(Vulkan.physical_device, 
+                                             memory_requirements.memoryTypeBits, 
+                                             memmory_properties) // HOST coherent to flush the mapped area before writing
+    };
+
+    VK_OK(vkAllocateMemory(Vulkan.device, 
+                          &alloc_info, 
+                          NULL, 
+                          buffer_memory), 
+          "Allocating buffer memory");
+    
+    // Associate the memory with the buffer description
+    vkBindBufferMemory(Vulkan.device, 
+                       *buffer, 
+                       *buffer_memory, 
+                       0); // Offset
 }
