@@ -54,7 +54,6 @@ struct sSwapchainSupportInfo {
     }
 };
 
-// https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain All of the details are in the struct now, so let's extend isDeviceSuitable
 struct sApp {
     GLFWwindow *window = NULL;
 
@@ -86,6 +85,7 @@ struct sApp {
 
         VkCommandPool command_pool;
         VkCommandBuffer command_buffers[MAX_FRAMES_IN_FLIGHT];
+        VkBuffer vertex_buffer;
 
         uint32_t    current_frame = 0;
         VkSemaphore image_available_semaphore[MAX_FRAMES_IN_FLIGHT];
@@ -165,6 +165,8 @@ struct sApp {
 
     void _create_command_buffers();
 
+    void _create_vertex_buffer();
+
     void _create_sync_objects();
 
     void _render_frame();
@@ -190,6 +192,7 @@ struct sApp {
         for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
         }
+        vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
         vkDestroySwapchainKHR(Vulkan.device, Vulkan.swapchain, NULL);
         vkDestroyDevice(Vulkan.device, NULL);
         vkDestroySurfaceKHR(Vulkan.instance, Vulkan.surface, NULL);

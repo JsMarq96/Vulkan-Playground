@@ -44,7 +44,11 @@ void sApp::_render_frame() {
         .pSignalSemaphores = &Vulkan.render_finished_semaphore[Vulkan.current_frame]
     };
 
-    VK_OK(vkQueueSubmit(Vulkan.graphics_queue, 1, &submit_info, Vulkan.in_flight_fence[Vulkan.current_frame]), "Submit Queue frame");
+    VK_OK(vkQueueSubmit(Vulkan.graphics_queue, 
+                        1, 
+                        &submit_info, 
+                        Vulkan.in_flight_fence[Vulkan.current_frame]), 
+          "Submit Queue frame");
 
     // Presentation
     VkPresentInfoKHR present_info = {
@@ -58,7 +62,9 @@ void sApp::_render_frame() {
         .pResults = NULL
     };
 
-    VK_OK(vkQueuePresentKHR(Vulkan.graphics_queue, &present_info), "Presenting frame");
+    VK_OK(vkQueuePresentKHR(Vulkan.graphics_queue, 
+                            &present_info),
+          "Presenting frame");
 
     Vulkan.current_frame = (Vulkan.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

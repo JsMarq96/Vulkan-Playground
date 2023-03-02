@@ -3,7 +3,11 @@
 #include <cstddef>
 #include <stdint.h>
 #include <vulkan/vulkan_core.h>
-//https://vulkan-tutorial.com/en/Drawing_a_triangle/Drawing/Rendering_and_presentation
+
+#include "mesh.h"
+
+//TODO: clean the Vertex descriptors 
+
 // Creating the synchronization objects
 void sApp::_create_graphics_pipeline() {
     // ===================================
@@ -108,13 +112,14 @@ void sApp::_create_graphics_pipeline() {
     VkPipelineVertexInputStateCreateInfo vertex_input_stage_create_info;
     {
         // TODO: no vertecies for now, so this is kinda empty
+        uint32_t biding_descr, attribute_descr;
         vertex_input_stage_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .pNext = NULL,
-            .vertexBindingDescriptionCount = 0,
-            .pVertexBindingDescriptions = NULL,
-            .vertexAttributeDescriptionCount = 0,
-            .pVertexAttributeDescriptions = NULL
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = Geometry::get_2D_biding_description(&biding_descr),
+            .vertexAttributeDescriptionCount = 2,
+            .pVertexAttributeDescriptions = Geometry::get_2D_attribute_description(&attribute_descr)
         };
     }
 
@@ -336,6 +341,21 @@ void sApp::_create_framebuffers() {
     }
 }
 
+void sApp::_create_vertex_buffer() {
+    VkBufferCreateInfo vertex_buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = NULL,
+        .size = sizeof(Geometry::Meshes::SingleTriangle),
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+    };
+
+    VK_OK(vkCreateBuffer(Vulkan.device, 
+                        &vertex_buffer_info,
+                        NULL, 
+                        &Vulkan.vertex_buffer), 
+         "Creating vertex buffer");
+}
 
 void sApp::_create_command_buffers() {
     // ===================================
@@ -355,6 +375,11 @@ void sApp::_create_command_buffers() {
                                   &Vulkan.command_pool),
               "Create command pool");
     }
+
+    // ===================================
+    // Vertex buffer =================
+    // ===================================
+    sApp::_create_vertex_buffer();
 
     // ===================================
     // CREATE CMD BUFFER =================
