@@ -20,14 +20,12 @@ namespace Geometry {
     };
 
     namespace Meshes {
-        union SingleTriangle {
-            sVertex2D vertices[3] = {
+        sVertex2D SingleTriangle[3] = {
                 { .position = {0.0f, -0.5f}, .color = {1.0f, 0.0f, 0.0f}},
                 { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f}},
                 { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 1.0f}}
-            };
-            float raw_vertices[];
         };
+        uint32_t SingleTriangleCount = 3;
     };
 
 

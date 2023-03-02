@@ -341,7 +341,12 @@ void sApp::_create_framebuffers() {
     }
 }
 
+uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
+                           const  uint32_t type_filter, 
+                           const VkMemoryPropertyFlags &properties);
+
 void sApp::_create_vertex_buffer() {
+    // Create Buffer
     VkBufferCreateInfo vertex_buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .pNext = NULL,
@@ -355,6 +360,50 @@ void sApp::_create_vertex_buffer() {
                         NULL, 
                         &Vulkan.vertex_buffer), 
          "Creating vertex buffer");
+    
+    // Query memmory requirements
+    VkMemoryRequirements memory_requirements;
+    vkGetBufferMemoryRequirements(Vulkan.device,
+                                  Vulkan.vertex_buffer,
+                                  &memory_requirements);
+    
+    VkMemoryAllocateInfo alloc_info = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .pNext = NULL,
+        .allocationSize = memory_requirements.size,
+        .memoryTypeIndex = find_memmory_type(Vulkan.physical_device, 
+                                             memory_requirements.memoryTypeBits, 
+                                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) // HOST coherent to flush the mapped area before writing
+    };
+
+    VK_OK(vkAllocateMemory(Vulkan.device, 
+                          &alloc_info, 
+                          NULL, 
+                          &Vulkan.vertex_buffer_memmory), 
+          "Allocating vertex buffer memory");
+    
+    // Associate the memory with the buffer description
+    vkBindBufferMemory(Vulkan.device, 
+                       Vulkan.vertex_buffer, 
+                       Vulkan.vertex_buffer_memmory, 
+                       0); // Offset
+    
+    // Upload Data to the memory
+    void *upload_data;
+    VK_OK(vkMapMemory(Vulkan.device, 
+                     Vulkan.vertex_buffer_memmory,
+                     0, // Offset on the memory
+                     vertex_buffer_info.size, 
+                     0, // Flags, but there are none on the api
+                     &upload_data), 
+         "Mapping memory");
+    
+    memcpy(upload_data, 
+           (void*) Geometry::Meshes::SingleTriangle, 
+           vertex_buffer_info.size);
+    
+    vkUnmapMemory(Vulkan.device, 
+                 Vulkan.vertex_buffer_memmory);
 }
 
 void sApp::_create_command_buffers() {
@@ -472,8 +521,24 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
                         &scissor);
     }
 
+    // Bind the vertex buffer =======================
+    {
+        vkCmdBindPipeline(command_buffer, 
+                         VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                         Vulkan.graphics_pipeline);
+        
+        VkBuffer vertex_buffers[] = {Vulkan.vertex_buffer};
+        VkDeviceSize offsets[] = {0};
+
+        vkCmdBindVertexBuffers(command_buffer, 
+                               0, 
+                               1, 
+                               vertex_buffers, 
+                               offsets);
+    }
+
     vkCmdDraw(command_buffer, 
-              3, // Vertex count 
+              Geometry::Meshes::SingleTriangleCount, // Vertex count 
               1, // instance count instanced rendering
               0, // first vertex
               0); // first isntance
@@ -502,4 +567,26 @@ void sApp::_create_sync_objects() {
         VK_OK(vkCreateSemaphore(Vulkan.device, &semaphore_create_info, NULL, &Vulkan.render_finished_semaphore[i]), "Create semaphore");
         VK_OK(vkCreateFence(Vulkan.device, &fence_create_info, NULL, &Vulkan.in_flight_fence[i]), "Create fence");
     }
+}
+
+// ==============================
+// HELPER FUNCS =================
+// ==============================
+uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
+                           const  uint32_t type_filter, 
+                           const VkMemoryPropertyFlags &properties) {
+    // Get all the hardware s memmory props
+    VkPhysicalDeviceMemoryProperties mem_properties;
+    vkGetPhysicalDeviceMemoryProperties(phys_device, 
+                                        &mem_properties);
+    
+    // Check the type of the memmory and also the properties (if its writable from the CPU for example)
+    for(uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+        if (type_filter & (1 << i) && (mem_properties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    assert_msg(false, "No usable memmory type");
+    return 0; // TODO: not very good
 }

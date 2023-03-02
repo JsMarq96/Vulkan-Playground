@@ -85,7 +85,9 @@ struct sApp {
 
         VkCommandPool command_pool;
         VkCommandBuffer command_buffers[MAX_FRAMES_IN_FLIGHT];
+
         VkBuffer vertex_buffer;
+        VkDeviceMemory vertex_buffer_memmory;
 
         uint32_t    current_frame = 0;
         VkSemaphore image_available_semaphore[MAX_FRAMES_IN_FLIGHT];
@@ -189,6 +191,9 @@ struct sApp {
         vkDestroyPipelineLayout(Vulkan.device, Vulkan.pipeline_layout, nullptr);
         vkDestroyRenderPass(Vulkan.device, Vulkan.render_pass, NULL);
         Vulkan.swapchain_info.clean();
+        vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
+        vkFreeMemory(Vulkan.device, Vulkan.vertex_buffer_memmory, NULL);
+
         for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
         }
