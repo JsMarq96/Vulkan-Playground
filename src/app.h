@@ -202,10 +202,16 @@ struct sApp {
 
         vkDestroyPipeline(Vulkan.device, Vulkan.graphics_pipeline, nullptr);
         vkDestroyPipelineLayout(Vulkan.device, Vulkan.pipeline_layout, nullptr);
+
         vkDestroyRenderPass(Vulkan.device, Vulkan.render_pass, NULL);
+
         Vulkan.swapchain_info.clean();
+
         vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
         vkFreeMemory(Vulkan.device, Vulkan.vertex_buffer_memmory, NULL);
+
+        vkDestroyBuffer(Vulkan.device, Vulkan.index_buffer, NULL);
+        vkFreeMemory(Vulkan.device, Vulkan.index_buffer_memory, NULL);
 
         for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);

@@ -346,7 +346,7 @@ uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
                            const VkMemoryPropertyFlags &properties);
 
 void sApp::_create_vertex_buffer() {
-    VkDeviceSize buffer_size = sizeof(Geometry::Meshes::SingleTriangle::vertices);
+    VkDeviceSize buffer_size = sizeof(Geometry::Meshes::Quad::vertices);
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
@@ -368,7 +368,7 @@ void sApp::_create_vertex_buffer() {
          "Mapping memory");
     
     memcpy(upload_data, 
-           (void*) Geometry::Meshes::SingleTriangle::vertices, 
+           (void*) Geometry::Meshes::Quad::vertices, 
            buffer_size);
     
     vkUnmapMemory(Vulkan.device, 
@@ -394,7 +394,51 @@ void sApp::_create_vertex_buffer() {
 }
 
 void sApp::_create_index_buffer() {
-    //
+    VkDeviceSize buffer_size = sizeof(Geometry::Meshes::Quad::indices);
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+
+    create_buffer(buffer_size, 
+                  VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                  &staging_buffer, 
+                  &staging_buffer_memory);
+
+    // Upload Data to the stating buffer's memory
+    void *upload_data;
+    VK_OK(vkMapMemory(Vulkan.device, 
+                     staging_buffer_memory,
+                     0, // Offset on the memory
+                     buffer_size, 
+                     0, // Flags, but there are none on the api
+                     &upload_data), 
+         "Mapping memory");
+    
+    memcpy(upload_data, 
+           (void*) Geometry::Meshes::Quad::indices, 
+           buffer_size);
+    
+    vkUnmapMemory(Vulkan.device, 
+                  staging_buffer_memory);
+    
+    
+    create_buffer(buffer_size, 
+                  VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, // More optimal layout in memory
+                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+                  &Vulkan.index_buffer, 
+                  &Vulkan.index_buffer_memory);
+
+    copy_buffer(staging_buffer, 
+                Vulkan.index_buffer, 
+                buffer_size);
+
+    vkDestroyBuffer(Vulkan.device, 
+                    staging_buffer, 
+                    NULL);
+    vkFreeMemory(Vulkan.device, 
+                 staging_buffer_memory, 
+                 NULL);
 }
 
 void sApp::_create_command_buffers() {
@@ -417,9 +461,10 @@ void sApp::_create_command_buffers() {
     }
 
     // ===================================
-    // Vertex buffer =================
+    // Vertex & indices buffer ===========
     // ===================================
     sApp::_create_vertex_buffer();
+    sApp::_create_index_buffer();
 
     // ===================================
     // CREATE CMD BUFFER =================
@@ -526,13 +571,19 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
                                1, 
                                vertex_buffers, 
                                offsets);
+
+        vkCmdBindIndexBuffer(command_buffer, 
+                            Vulkan.index_buffer, 
+                            0, // offset
+                            VK_INDEX_TYPE_UINT32);
     }
 
-    vkCmdDraw(command_buffer, 
-              Geometry::Meshes::SingleTriangle::vertices_count, // Vertex count 
-              1, // instance count instanced rendering
-              0, // first vertex
-              0); // first isntance
+    vkCmdDrawIndexed(command_buffer, 
+                     Geometry::Meshes::Quad::indices_count, // Vertex count 
+                     1, // instance count instanced rendering
+                     0, // first vertex
+                     0,
+                     0); // first isntance
             
     vkCmdEndRenderPass(command_buffer);
 
