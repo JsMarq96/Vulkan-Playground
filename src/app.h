@@ -28,6 +28,8 @@
 #define ENGINE_NAME   "No engine"
 
 #define MAX_FRAMES_IN_FLIGHT 2
+#define MAX_UNIFORM_BUFFERS 5 * MAX_FRAMES_IN_FLIGHT
+#define MAX_DESCRIPTOR_SETS 5 * MAX_FRAMES_IN_FLIGHT
 
 // TODO: https://vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer
 
@@ -75,6 +77,12 @@ struct sApp {
 
         VkPipeline graphics_pipeline;
         VkRenderPass render_pass;
+
+        VkDescriptorSetLayout descriptor_set_layout;
+        VkDescriptorPool descriptor_pool;
+        VkDescriptorSet  descriptor_sets[MAX_DESCRIPTOR_SETS];
+        uint32_t descriptor_sets_count = 0;
+
         VkPipelineLayout pipeline_layout;
 
         VkFramebuffer *framebuffers = NULL;
@@ -97,6 +105,12 @@ struct sApp {
         VkSemaphore image_available_semaphore[MAX_FRAMES_IN_FLIGHT];
         VkSemaphore render_finished_semaphore[MAX_FRAMES_IN_FLIGHT];
         VkFence in_flight_fence[MAX_FRAMES_IN_FLIGHT]; // ???
+
+        // Uniform buffers
+        VkBuffer uniform_buffers[MAX_UNIFORM_BUFFERS];
+        VkDeviceMemory uniform_buffers_memory[MAX_UNIFORM_BUFFERS];
+        void*   uniform_buffers_mapped[MAX_UNIFORM_BUFFERS];
+        uint32_t uniform_buffer_count = 0;
 
         // Validation layers
         const char* required_validation_layers[2] = {
@@ -123,6 +137,7 @@ struct sApp {
     void run() {
         _init_window();
         _init_vulkan();
+        _create_descriptor_set_layout();
         _create_graphics_pipeline();
         _create_framebuffers();
         _create_command_buffers();
@@ -165,6 +180,12 @@ struct sApp {
 
     void _init_vulkan();
 
+    void _create_descriptor_set_layout();
+
+    void _create_uniform_buffers();
+
+    void _create_descriptor_pool_and_set();
+
     void _create_graphics_pipeline();
 
     void _create_framebuffers();
@@ -206,6 +227,15 @@ struct sApp {
         vkDestroyRenderPass(Vulkan.device, Vulkan.render_pass, NULL);
 
         Vulkan.swapchain_info.clean();
+
+        for(uint32_t i = 0; i < Vulkan.uniform_buffer_count; i++) {
+            vkDestroyBuffer(Vulkan.device, Vulkan.uniform_buffers[i], NULL);
+            vkFreeMemory(Vulkan.device, Vulkan.uniform_buffers_memory[i], NULL);
+        }
+
+        vkDestroyDescriptorPool(Vulkan.device, Vulkan.descriptor_pool, NULL);
+
+        vkDestroyDescriptorSetLayout(Vulkan.device, Vulkan.descriptor_set_layout, NULL);
 
         vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
         vkFreeMemory(Vulkan.device, Vulkan.vertex_buffer_memmory, NULL);

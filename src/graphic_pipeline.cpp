@@ -193,7 +193,7 @@ void sApp::_create_graphics_pipeline() {
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_BACK_BIT,
-            .frontFace = VK_FRONT_FACE_CLOCKWISE,
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
             .depthBiasEnable = VK_FALSE,
             .depthBiasConstantFactor = 0.0f,
             .depthBiasClamp = 0.0f,
@@ -261,8 +261,8 @@ void sApp::_create_graphics_pipeline() {
         VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .pNext = NULL,
-            .setLayoutCount = 0,
-            .pSetLayouts = NULL,
+            .setLayoutCount = 1,
+            .pSetLayouts = &Vulkan.descriptor_set_layout,
             .pushConstantRangeCount = 0,
             .pPushConstantRanges = NULL
         };
@@ -465,6 +465,8 @@ void sApp::_create_command_buffers() {
     // ===================================
     sApp::_create_vertex_buffer();
     sApp::_create_index_buffer();
+    sApp::_create_uniform_buffers();
+    sApp::_create_descriptor_pool_and_set();
 
     // ===================================
     // CREATE CMD BUFFER =================
@@ -481,13 +483,6 @@ void sApp::_create_command_buffers() {
                                        &command_buff_alloc_info, 
                                        Vulkan.command_buffers),
               "Command buffer creation");
-    }
-
-    // ===================================
-    // RECORD CMD BUFFER =================
-    // ===================================
-    {
-        //record_command_buffer(Vulkan.command_buffer, Vulkan.render_pass, )
     }
 }
 
@@ -577,6 +572,15 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
                             0, // offset
                             VK_INDEX_TYPE_UINT32);
     }
+
+    vkCmdBindDescriptorSets(command_buffer, 
+                            VK_PIPELINE_BIND_POINT_GRAPHICS, 
+                            Vulkan.pipeline_layout, 
+                            0, 
+                            1, 
+                            &Vulkan.descriptor_sets[Vulkan.current_frame], 
+                            0, 
+                            NULL);
 
     vkCmdDrawIndexed(command_buffer, 
                      Geometry::Meshes::Quad::indices_count, // Vertex count 
