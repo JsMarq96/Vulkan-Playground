@@ -148,7 +148,9 @@ void sApp::create_image(const char* image_name,
     texture->width = text_width;
     texture->height = text_height;
     texture->depth = 1;
+    texture->device = &Vulkan.device;
+    texture->physical_device = &Vulkan.physical_device;
+    texture->format = VK_FORMAT_R8G8B8A8_SRGB;
     texture->texture_image = texture_image;
     texture->texture_image_memory = texture_image_memory;
-
 }

@@ -21,6 +21,7 @@
 #include <iostream>
 
 #include "utils.h"
+#include "textures.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -31,27 +32,11 @@
 #define MAX_UNIFORM_BUFFERS 5 * MAX_FRAMES_IN_FLIGHT
 #define MAX_DESCRIPTOR_SETS 5 * MAX_FRAMES_IN_FLIGHT
 
-// TODO: https://vulkan-tutorial.com/en/Vertex_buffers/Staging_buffer
-
 struct sQueueFamilies {
     uint32_t graphics_family_id;
     bool has_found_graphics_family = false;
     uint32_t presenting_family_id;
     bool has_found_presenting_familiy = false;
-};
-
-struct sTexture {
-    uint32_t width;
-    uint32_t height;
-    uint32_t depth;
-
-    VkImage texture_image;
-    VkDeviceMemory texture_image_memory;
-
-    void cleanup(const VkDevice &device) {
-        vkDestroyImage(device, texture_image, NULL);
-        vkFreeMemory(device, texture_image_memory, NULL);
-    }
 };
 
 struct sSwapchainSupportInfo {
@@ -161,6 +146,9 @@ struct sApp {
         create_image("resources/bop.jpg", 
                      &texture);
 
+        texture.create_image_view();
+        texture.create_sampler();
+
         _create_sync_objects();
         _main_loop();
         _clean_up();
@@ -261,7 +249,7 @@ struct sApp {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
         }
 
-        texture.cleanup(Vulkan.device);
+        texture.cleanup();
 
         vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
         vkDestroySwapchainKHR(Vulkan.device, Vulkan.swapchain, NULL);

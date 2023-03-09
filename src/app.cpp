@@ -195,7 +195,9 @@ void sApp::_init_vulkan() {
         };
 
         // Set the device features: no need for now (thingslike geometry shaders and stuff)
-        VkPhysicalDeviceFeatures device_features{};
+        VkPhysicalDeviceFeatures device_features{
+            .samplerAnisotropy = VK_TRUE,
+        };
 
         // TODO: add the enabled layers for retorcompatibility
         VkDeviceCreateInfo device_create_info = {
