@@ -142,13 +142,6 @@ struct sApp {
         _create_graphics_pipeline();
         _create_framebuffers();
         _create_command_buffers();
-
-        create_image("resources/bop.jpg", 
-                     &texture);
-
-        texture.create_image_view();
-        texture.create_sampler();
-
         _create_sync_objects();
         _main_loop();
         _clean_up();

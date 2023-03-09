@@ -118,7 +118,7 @@ void sApp::_create_graphics_pipeline() {
             .pNext = NULL,
             .vertexBindingDescriptionCount = 1,
             .pVertexBindingDescriptions = Geometry::get_2D_biding_description(&biding_descr),
-            .vertexAttributeDescriptionCount = 2,
+            .vertexAttributeDescriptionCount = 3,
             .pVertexAttributeDescriptions = Geometry::get_2D_attribute_description(&attribute_descr)
         };
     }
@@ -466,6 +466,13 @@ void sApp::_create_command_buffers() {
     sApp::_create_vertex_buffer();
     sApp::_create_index_buffer();
     sApp::_create_uniform_buffers();
+
+    create_image("resources/bop.jpg", 
+                 &texture);
+
+    texture.create_image_view();
+    texture.create_sampler();
+
     sApp::_create_descriptor_pool_and_set();
 
     // ===================================
@@ -559,7 +566,7 @@ void sApp::record_command_buffer(const VkCommandBuffer &command_buffer,
                          Vulkan.graphics_pipeline);
         
         VkBuffer vertex_buffers[] = {Vulkan.vertex_buffer};
-        VkDeviceSize offsets[] = {0};
+        VkDeviceSize offsets[] = {0, 0};
 
         vkCmdBindVertexBuffers(command_buffer, 
                                0, 

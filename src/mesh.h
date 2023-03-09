@@ -17,6 +17,7 @@ namespace Geometry {
     struct sVertex2D {
         glm::vec2 position;
         glm::vec3 color;
+        glm::vec2 text_coord;
     };
 
     namespace Meshes {
@@ -36,10 +37,10 @@ namespace Geometry {
             const uint32_t indices[6] = { 0, 1, 2, 2, 3, 0 };
             const uint32_t vertices_count = 4;
             const sVertex2D vertices[4] = {
-                    { .position = {-0.5f, -0.5f}, .color = {1.0f, 0.0f, 0.0f} },
-                    { .position = {0.5f, -0.5f}, .color = {1.0f, 1.0f, 0.0f} },
-                    { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f} },
-                    { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 0.0f} }
+                    { .position = {-0.5f, -0.5f}, .color = {1.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 0.0f} },
+                    { .position = {0.5f, -0.5f}, .color = {1.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 0.0f} },
+                    { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 1.0f} },
+                    { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 1.0f} }
             };
         };
     };
@@ -61,8 +62,8 @@ namespace Geometry {
 
     static VkVertexInputAttributeDescription* get_2D_attribute_description(uint32_t *count) {
         // Atribute config
-        *count = 2;
-        VkVertexInputAttributeDescription *attribute_description = (VkVertexInputAttributeDescription*) malloc(sizeof(VkVertexInputAttributeDescription) * 2);
+        *count = 3;
+        VkVertexInputAttributeDescription *attribute_description = (VkVertexInputAttributeDescription*) malloc(sizeof(VkVertexInputAttributeDescription) * 3);
         attribute_description[0] = {
             .location = 0,
             .binding = 0,
@@ -74,6 +75,12 @@ namespace Geometry {
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
             .offset = offsetof(sVertex2D, color)
+        };
+        attribute_description[2] = {
+            .location = 2,
+            .binding = 0,
+            .format = VK_FORMAT_R32G32_SFLOAT,
+            .offset = offsetof(sVertex2D, text_coord)
         };
 
         return attribute_description;

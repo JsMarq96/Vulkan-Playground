@@ -66,7 +66,7 @@ struct sTexture {
             .addressModeU = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT, // Wrap arround UVS using a repeat
             .addressModeV = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
             .addressModeW = VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
-            .mipLodBias = 0.0f,
+            .mipLodBias = 0.0f, // ??
             .anisotropyEnable  = VK_TRUE,
             .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
             .compareEnable = VK_FALSE, // PCF on shadowmaps
