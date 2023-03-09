@@ -27,4 +27,4 @@ target_link_libraries(VULKAN_PLAYGROUND "glfw")
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(VULKAN_PLAYGROUND ${Vulkan_LIBRARIES})
-include_directories(${Vulkan_INCLUDE_DIR})
+include_directories(${Vulkan_INCLUDE_DIR} ${includes_dir})

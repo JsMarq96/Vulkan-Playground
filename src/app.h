@@ -40,6 +40,20 @@ struct sQueueFamilies {
     bool has_found_presenting_familiy = false;
 };
 
+struct sTexture {
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+
+    VkImage texture_image;
+    VkDeviceMemory texture_image_memory;
+
+    void cleanup(const VkDevice &device) {
+        vkDestroyImage(device, texture_image, NULL);
+        vkFreeMemory(device, texture_image_memory, NULL);
+    }
+};
+
 struct sSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilites;
     VkSurfaceFormatKHR  *formats = NULL;
@@ -60,6 +74,8 @@ struct sSwapchainSupportInfo {
 
 struct sApp {
     GLFWwindow *window = NULL;
+
+    sTexture texture;
 
     // Vulkan data
     struct {
@@ -141,6 +157,10 @@ struct sApp {
         _create_graphics_pipeline();
         _create_framebuffers();
         _create_command_buffers();
+
+        create_image("resources/bop.jpg", 
+                     &texture);
+
         _create_sync_objects();
         _main_loop();
         _clean_up();
@@ -200,12 +220,6 @@ struct sApp {
 
     void _render_frame();
 
-    void create_buffer(const VkDeviceSize &size, 
-                       const VkBufferUsageFlags usage,
-                       const VkMemoryPropertyFlags memmory_properties, 
-                       VkBuffer *buffer, 
-                       VkDeviceMemory *buffer_memory);
-    void copy_buffer(const VkBuffer &src_buffer, const VkBuffer dst_buffer, const VkDeviceSize size);
 
     // TODO: clean shaders
     void _clean_up() {
@@ -246,6 +260,9 @@ struct sApp {
         for(uint32_t i = 0; i < Vulkan.swapchain_images_count; i++) {
             vkDestroyImageView(Vulkan.device, Vulkan.swapchain_image_views[i], NULL);
         }
+
+        texture.cleanup(Vulkan.device);
+
         vkDestroyBuffer(Vulkan.device, Vulkan.vertex_buffer, NULL);
         vkDestroySwapchainKHR(Vulkan.device, Vulkan.swapchain, NULL);
         vkDestroyDevice(Vulkan.device, NULL);
@@ -257,9 +274,31 @@ struct sApp {
         glfwTerminate();
     }
 
+    // ===============================
+    // HELPER FUNCTIONS
+    // ===============================
+    void create_buffer(const VkDeviceSize &size, 
+                       const VkBufferUsageFlags usage,
+                       const VkMemoryPropertyFlags memmory_properties, 
+                       VkBuffer *buffer, 
+                       VkDeviceMemory *buffer_memory);
+    void copy_buffer(const VkBuffer &src_buffer, const VkBuffer dst_buffer, const VkDeviceSize size);
+
     void record_command_buffer(const VkCommandBuffer &command_buffer,
                            const VkRenderPass &render_pass,
                            const uint32_t image_index);
+
+    void create_image(const char* image_name, sTexture *texture);
+
+    uint32_t find_memmory_type(const VkPhysicalDevice &phys_device,
+                           const  uint32_t type_filter, 
+                           const VkMemoryPropertyFlags &properties);
+
+    VkCommandBuffer being_single_time_commands();
+    void end_single_time_commands(const VkCommandBuffer &command_buffer);
+
+    void copy_buffer_to_image(const VkBuffer &buffer, const VkImage &image, const uint32_t width, const uint32_t height,  const uint32_t depth);
+    void transition_image_layout(const VkImage &image, const VkFormat &format, const VkImageLayout &old_layout, const VkImageLayout &new_layout);
 
     void _main_loop() {
         while(!glfwWindowShouldClose(window)) {
