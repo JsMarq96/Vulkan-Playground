@@ -37,10 +37,10 @@ namespace Geometry {
             const uint32_t indices[6] = { 0, 1, 2, 2, 3, 0 };
             const uint32_t vertices_count = 4;
             const sVertex2D vertices[4] = {
-                    { .position = {-0.5f, -0.5f}, .color = {1.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 0.0f} },
-                    { .position = {0.5f, -0.5f}, .color = {1.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 0.0f} },
-                    { .position = {0.5f, 0.5f}, .color = {0.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 1.0f} },
-                    { .position = {-0.5f, 0.5f}, .color = {0.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 1.0f} }
+                    { .position = {-1.5f, -1.5f}, .color = {1.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 0.0f} },
+                    { .position = {1.5f, -1.5f}, .color = {1.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 0.0f} },
+                    { .position = {1.5f, 1.5f}, .color = {0.0f, 1.0f, 0.0f}, .text_coord = {0.0f, 1.0f} },
+                    { .position = {-1.5f, 1.5f}, .color = {0.0f, 0.0f, 0.0f}, .text_coord = {1.0f, 1.0f} }
             };
         };
     };
